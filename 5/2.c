@@ -6,8 +6,30 @@
 #include <sys/wait.h>
 #include <unistd.h> // fork, write, close
 
+const char * TEST_FILE = "./2.txt";
+const int TEST_LINES = 1000;
+
+void printfile(const char * file_path) {
+    FILE *fp;
+    fp = fopen(file_path, "r");
+    int ch;
+    printf("\nfile contents: \n");
+    while ((ch = fgetc(fp)) != EOF)
+      printf("%c", ch);
+    fclose(fp);
+}
+
+void writeFile(int fd, int lines, const char * type) {
+  for(int i=0; i < lines; i++) {
+    char line[128];
+    int size = sprintf(line, "%s writes a line %d.\n", type, i);
+    write(fd, line, size);
+  }
+}
+
+
 int main() {
-  int fd = open("./2.txt", O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
+  int fd = open(TEST_FILE, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
   int rc = fork();
   write(fd, "First line.\n", strlen("First line.\n"));
 
@@ -16,23 +38,18 @@ int main() {
     fprintf(stderr, "fork failed\n");
     exit(EXIT_FAILURE);
   } else if (rc == 0) {
-    write(fd, "child writes a line.\n", strlen("child writes a line.\n"));
     printf("file descriptor in child process: %d\n", fd);
+    writeFile(fd, TEST_LINES, "child");
   } else {
-    write(fd, "parent writes a line.\n", strlen("parent writes a line.\n"));
     printf("file descriptor in parent prosess: %d\n", fd);
+    writeFile(fd, TEST_LINES, "parent");
 
     if (wait(NULL) == -1) {
       fprintf(stderr, "wait failed\n");
       exit(EXIT_FAILURE);
     }
-    FILE *fp;
-    fp = fopen("./2.txt", "r");
-    int ch;
-    printf("\nfile contents: \n");
-    while ((ch = fgetc(fp)) != EOF)
-      printf("%c", ch);
-    fclose(fp);
+
+    printfile(TEST_FILE);
   }
 
   close(fd);
